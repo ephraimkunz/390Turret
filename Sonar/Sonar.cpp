@@ -1,32 +1,40 @@
 #include "Arduino.h"
 #include "Sonar.h"
 
-Sonar::Sonar(int pin) {
-    this.newPing = NewPing(pin, pin);
+Sonar::Sonar(int pinNum) {
+    ping = new NewPing(pinNum, pinNum);
+}
+
+Sonar::~Sonar(){
+    delete ping;
 }
 
 bool Sonar::hitDetected(int position) {
     bool hitDetected = false;
-    usigned long median = this.newPing.ping_median();
-    
-    if(abs(memory[position] - median) > EPSILON) {
+    unsigned long median = ping->ping_median();
+
+    if(abs(ping->convert_in(memory[position]) - ping->convert_in(median)) > EPSILON) {
         hitDetected = true;
     }
     memory[position] = median;
     return hitDetected;
 }
 
-void setNormalRange(int position) {
-    unsigned long median = this.newPing.ping_median();
+void Sonar::setNormalRange(int position) {
+    unsigned long median = ping->ping_median();
     memory[position] = median;
 }
 
-void reset() {
+void Sonar::reset() {
     for(int i = 0; i < NUM_POSITIONS; ++i) {
         memory[i] = 0;
     }
 }
 
-int numPositions() {
+unsigned long Sonar::getDistanceAt(int position){
+    return ping->convert_in(memory[position]);
+}
+
+int Sonar::numPositions() {
     return NUM_POSITIONS;
 }

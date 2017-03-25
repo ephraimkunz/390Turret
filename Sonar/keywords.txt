@@ -1,0 +1,24 @@
+###################################
+# Syntax Coloring Map For Sonar
+###################################
+
+###################################
+# Datatypes (KEYWORD1)
+###################################
+
+Sonar	KEYWORD1
+
+###################################
+# Methods and Functions (KEYWORD2)
+###################################
+
+hitDetected	KEYWORD2
+setNormalRange	KEYWORD2
+reset	KEYWORD2
+numPositions	KEYWORD2
+getDistanceAt	KEYWORD2
+
+###################################
+# Constants (LITERAL1)
+###################################
+
