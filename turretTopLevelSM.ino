@@ -12,13 +12,13 @@
 
 #define AZMPIN 3
 #define CLOCKWISE_US 1000
-#define CNTRCLOCKWISE_US 4000
+#define CNTRCLOCKWISE_US 2000
 #define USPERDEGREE 3200
 
 #define NUM_OF_BINS (NUM_POSITIONS)
 #define TOTAL_RTN_TIME_MS 1500
 #define SAMPLETIME_MS (10)
-#define NUMSAMPLES 5
+#define NUMSAMPLES (5)
 #define SAMPELSTATE_MS (NUMSAMPLES * SAMPLETIME_MS)
 #define ANGLESLICETIME_MS (TOTAL_RTN_TIME_MS/NUM_OF_BINS)
 #define RUNNINGTIME_US (ANGLESLICETIME_MS)
@@ -44,8 +44,19 @@ bool CCW_on = false;
 unsigned long long LEDlastPwmEvent = 0;
 volatile bool LED_en = false;
 bool LED_on = false;
-
-enum controlState_t {INIT,RUNNING,SAMPLE,PROCESS,SOUNDALERT,KILLALL,REST};
+/*
+ * We need to get the switch player values
+ * One full set up circle
+ * Rotate 
+ * Sample
+ * If there is a hit, (already at angle)
+ * Sound Alarm, Fire 5 seconds
+ * Check Again,
+ * Either Continue firing or start search again
+ * 
+ * 
+ */
+enum controlState_t {INIT,CALIBRATION,RUNNING,SAMPLE,SOUNDALERT,KILLALL,REST};
 controlState_t controlState = INIT;
 
 
