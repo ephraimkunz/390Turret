@@ -7,8 +7,8 @@
 #define SONARPIN 6
 
 #define LEDPIN 10
-#define LED_FREQUENCY_HZ 1570
-#define LED_HALFPERIOD_US (1E6/LED_FREQUENCY_HZ)
+#define LED_FREQUENCY_HZ 4500
+#define LED_HALFPERIOD_US ((1E6 / (LED_FREQUENCY_HZ*2)))
 
 #define AZMPIN 3
 #define CLOCKWISE_US 1000
@@ -22,6 +22,7 @@
 #define SAMPELSTATE_MS (NUMSAMPLES * SAMPLETIME_MS)
 #define ANGLESLICETIME_MS (TOTAL_RTN_TIME_MS/NUM_OF_BINS)
 #define RUNNINGTIME_US (ANGLESLICETIME_MS)
+#define KILLALLTIME_MS (1000)
 
 #define MAXANGLE 360 // Used in setting current position limits in naming locations
 #define MINANGLE 0
@@ -32,6 +33,7 @@ Sonar SONAR1(SONARPIN);
 unsigned long long directionCounter = 0;
 unsigned long long runningTimeMark = 0;
 unsigned long long sampleTimeMark = 0;
+unsigned long long killAllTimeMark = 0;
 
 unsigned long long CWlastPwmEvent = 0;
 volatile bool CW_en = false;
@@ -64,6 +66,7 @@ controlState_t controlState = INIT;
 
 void setup() {
   pinMode(AZMPIN, OUTPUT);
+  pinMode(LEDPIN, OUTPUT);
   initTurret();
   Serial.begin(9600);
   delay(1000);
@@ -136,24 +139,25 @@ void controlSMtick()
 
           if ((millis() - sampleTimeMark) >= (SAMPELSTATE_MS))
           {
-            controlState = PROCESS;
+            controlState = SOUNDALERT;
             runningTimeMark = millis();       
           }
      break;
-     case PROCESS:
-      {
-        controlState = SOUNDALERT;
-      }
-      break; 
      case SOUNDALERT:
       {
         enableLED();
         controlState = KILLALL;
+        killAllTimeMark = millis();
       }
       break; 
      case KILLALL:
       {
-        controlState = REST;     
+        if ((millis() - killAllTimeMark) >= (KILLALLTIME_MS))
+          {
+            controlState = KILLALL;
+            runningTimeMark = millis();       
+          }
+        
       }
       break; 
      
