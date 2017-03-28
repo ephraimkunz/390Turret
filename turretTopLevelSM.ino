@@ -6,18 +6,22 @@
 
 #define SONARPIN 6
 
+#define LEDPIN 10
+#define LED_FREQUENCY_HZ 1570
+#define LED_HALFPERIOD_US (1E6/LED_FREQUENCY_HZ)
+
 #define AZMPIN 3
-#define CLOCKWISE_MS 0.5
-#define CNTRCLOCKWISE_MS 1
-#define MSPERDEGREE 3.2
+#define CLOCKWISE_US 1000
+#define CNTRCLOCKWISE_US 4000
+#define USPERDEGREE 3200
 
 #define NUM_OF_BINS (NUM_POSITIONS)
-#define TOTAL_RTN_TIME_MS 1200
-#define SAMPLETIME_MS 10
+#define TOTAL_RTN_TIME_MS 1500
+#define SAMPLETIME_MS (10)
 #define NUMSAMPLES 5
 #define SAMPELSTATE_MS (NUMSAMPLES * SAMPLETIME_MS)
 #define ANGLESLICETIME_MS (TOTAL_RTN_TIME_MS/NUM_OF_BINS)
-#define RUNNINGTIME_MS (ANGLESLICETIME_MS)
+#define RUNNINGTIME_US (ANGLESLICETIME_MS)
 
 #define MAXANGLE 360 // Used in setting current position limits in naming locations
 #define MINANGLE 0
@@ -37,6 +41,10 @@ unsigned long long CCWlastPwmEvent = 0;
 volatile bool CCW_en = false;
 bool CCW_on = false;
 
+unsigned long long LEDlastPwmEvent = 0;
+volatile bool LED_en = false;
+bool LED_on = false;
+
 enum controlState_t {INIT,RUNNING,SAMPLE,PROCESS,SOUNDALERT,KILLALL,REST};
 controlState_t controlState = INIT;
 
@@ -45,7 +53,7 @@ controlState_t controlState = INIT;
 
 void setup() {
   pinMode(AZMPIN, OUTPUT);
-  azmControlInit();
+  initTurret();
   Serial.begin(9600);
   delay(1000);
   SONAR1.reset();
@@ -56,19 +64,21 @@ void setup() {
 }
 
 // Intializes all the variables
-void azmControlInit()
+void initTurret()
 {
   CW_en = false;
   CCW_en = false;
+  LED_en = false;
 
   CWlastPwmEvent = 0;
   CCWlastPwmEvent = 0;
+  LEDlastPwmEvent = 0;
 }
 
 
 
 void loop() {
-  azmControlTick();
+  allTicks();
 }
 
 
@@ -101,17 +111,18 @@ void controlSMtick()
       break;
     case RUNNING:
       {   
-          enableCW();    
-          if ((millis() - runningTimeMark) >= (RUNNINGTIME_MS))
+          enableCCW();
+          
+          if ((millis() - runningTimeMark) >= (RUNNINGTIME_US))
           {
             controlState = SAMPLE;
             sampleTimeMark = millis();
-            disableCW();             
+            disableCCW();             
           }
       }
        break;
     case SAMPLE:
-           
+
           if ((millis() - sampleTimeMark) >= (SAMPELSTATE_MS))
           {
             controlState = PROCESS;
@@ -125,6 +136,7 @@ void controlSMtick()
       break; 
      case SOUNDALERT:
       {
+        enableLED();
         controlState = KILLALL;
       }
       break; 
@@ -138,6 +150,7 @@ void controlSMtick()
       {
           
           disableCW();
+          disableLED();
           controlState = RUNNING; 
       }
       break; 
@@ -170,10 +183,22 @@ void controlSMtick()
     CCW_en = true;
   }
 
-  // Disable Clockwise Motion
+  // Disable CounterClockwise Motion
   void disableCCW()
   {
     CCW_en = false;
+  }
+  
+   // Enable LED Strobe
+  void enableLED()
+  {
+    LED_en = true;
+  }
+
+  // Disable LED Strobe
+  void disableLED()
+  {
+    LED_en = false;
   }
 
 
@@ -194,7 +219,7 @@ void controlSMtick()
 
     // Check to see if an event time has lapsed
 
-    if ((millis() - CWlastPwmEvent) > CLOCKWISE_MS)
+    if ((micros() - CWlastPwmEvent) > CLOCKWISE_US)
     { // Pulse Width has elapsed
       // Serial.println("TickCW Event");
       // Check to see if on or off
@@ -215,7 +240,7 @@ void controlSMtick()
         CW_on = true;
       }
       // Log the last event
-      CWlastPwmEvent = millis();
+      CWlastPwmEvent = micros();
     }
     // No Event, Do nothing
   }
@@ -224,7 +249,7 @@ void controlSMtick()
   {
     // Check to see if an event time has lapsed
 
-    if ((millis() - CCWlastPwmEvent) > CNTRCLOCKWISE_MS)
+    if ((micros() - CCWlastPwmEvent) > CNTRCLOCKWISE_US)
     { // Pulse Width has elapsed
 
       // Check to see if on or off
@@ -246,15 +271,49 @@ void controlSMtick()
       }
 
       // Log the last event
-      CCWlastPwmEvent = millis();
+      CCWlastPwmEvent = micros();
     }
     // No Event, Do nothing
   }
 
+  void tickLED()
+  {
+    // Check to see if an event time has lapsed
+
+    if ((micros() - LEDlastPwmEvent) > LED_HALFPERIOD_US)
+    { // Pulse Width has elapsed
+
+      // Check to see if on or off
+      if (LED_on == true) // On
+      {
+
+        // Turn off the pwm
+        digitalWrite(LEDPIN, LOW);
+        // Report
+        LED_on = false;
+      }
+      else // Off
+      {
+
+        // Turn on the pwm
+        digitalWrite(LEDPIN, HIGH);
+        // Report
+        LED_on = true;
+      }
+
+      // Log the last event
+      LEDlastPwmEvent = micros();
+    }
+    // No Event, Do nothing
+  }
+
+
+
   // Ticks the appropriate clockwise
   // or counter clockwise
-  void azmControlTick()
+  void allTicks()
   {
     controlSMtick();
     tickServos();
+    tickLED();
   }
