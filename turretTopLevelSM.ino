@@ -162,8 +162,6 @@ void controlSMtick()
   {
     case INIT:
       {
-
-
         directionCounter = 0;
         forwardTimeMark = millis();
         sampleTimeMark = 0;
@@ -189,9 +187,6 @@ void controlSMtick()
       break;
     case REVERSE:
       {
-
-
-
         if ((millis() - reverseTimeMark) >= (REVERSETIME_MS))
         {
           controlState = SAMPLE;
@@ -202,12 +197,11 @@ void controlSMtick()
       }
       break;
     case SAMPLE:
-
-      if ((millis() - sampleTimeMark) >= (SAMPELSTATE_MS))
-      {
-        
-       // Serial.println(locationCounter);
-
+      if(SONAR1.hitDetected(locationCounter)){
+        controlState = SOUNDALERT;
+        break;
+      }
+      else{
         if (incORdec)
         {
           if ((locationCounter == NUM_OF_BINS))
@@ -240,9 +234,7 @@ void controlSMtick()
             incORdec = false;
           }
         }
-
       }
-
       break;
     case SOUNDALERT:
       {
@@ -255,7 +247,7 @@ void controlSMtick()
       {
         if ((millis() - killAllTimeMark) >= (KILLALLTIME_MS))
         {
-          controlState = KILLALL;
+          controlState = INIT;
           forwardTimeMark = millis();
         }
 
