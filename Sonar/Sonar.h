@@ -3,6 +3,12 @@
 #define NUM_POSITIONS 12 //30 degrees for each move
 #define EPSILON 3 //3 inches is the max wiggle room before detection
 
+/*
+You might need to adjust the sensitivity of the hit detection. To do this, adjust EPSILON to a higher value. Alternativly,
+adjust the number of hits for median up from 5 or the max distance in the constructor to be less (if we have issues at
+higher distances).
+*/
+
 class Sonar {
 public:
     /* Init a new Sonar instance. Use like this: Sonar instance(pinNum);
