@@ -15,14 +15,14 @@
 #define US_PER_DEGREE 3.3E3
 signed int currentAngle = 0;
 
-#define MAXANGLE 90 // Used in setting current position limits in naming locations
+#define MAXANGLE 180 // Used in setting current position limits in naming locations
 #define MINANGLE 0
 
 #define NUM_OF_BINS (5)
 #define WAITTIME_MS (1)
 #define NUMSAMPLES (5)
 #define ANGLESLICE_DEG ((MAXANGLE-MINANGLE)/NUM_OF_BINS)
-#define KILLALLTIME_MS 5000
+#define KILLALLTIME_MS 3000
 
 
 #define SONARPIN 6
@@ -30,6 +30,8 @@ Sonar SONAR1(SONARPIN);
 #define NORMAL_RANGE 10000
 
 unsigned long long directionCounter = 0;
+unsigned calibrationCounter = 0;
+bool countingDown = false;
 
 unsigned long long sampleTimeMark = 0;
 unsigned long long killAllTimeMark = 0;
@@ -63,44 +65,40 @@ void setup() {
   Serial.begin(9600);
   delay(1000);
   SONAR1.reset();
-  SONAR1.setNormalRange(NORMAL_RANGE);
-
-
-
 }
 
 // Intializes all the variables
 void initTurret()
 {
-  CW_en = false;
-  CCW_en = false;
-  LED_en = false;
+  //  CW_en = false;
+  //  CCW_en = false;
+  //  LED_en = false;
 
-  CWlastPwmEvent = 0;
-  CCWlastPwmEvent = 0;
-  LEDlastPwmEvent = 0;
+  //  CWlastPwmEvent = 0;
+  //  CCWlastPwmEvent = 0;
+  //  LEDlastPwmEvent = 0;
 }
 
 
 
 void loop() {
 
-//  goToDegree(0);
-//  delay(1000);
-//  goToDegree(15);
-//  delay(1000);
-//  goToDegree(30);
-//  delay(1000);
-//  goToDegree(45);
-//  delay(1000);
-//  goToDegree(60);
-//  delay(1000);
-//  goToDegree(75);
-//  delay(1000);
-//  goToDegree(90);
-//  delay(1000);
+  //  goToDegree(0);
+  //  delay(1000);
+  //  goToDegree(15);
+  //  delay(1000);
+  //  goToDegree(30);
+  //  delay(1000);
+  //  goToDegree(45);
+  //  delay(1000);
+  //  goToDegree(60);
+  //  delay(1000);
+  //  goToDegree(75);
+  //  delay(1000);
+  //  goToDegree(90);
+  //  delay(1000);
 
-controlSMtick();
+  controlSMtick();
 
 }
 
@@ -120,7 +118,7 @@ void debugStatePrint()
         break;
 
       case CALIBRATION:
-        Serial.println("REST");
+        Serial.println("CALIBRATION");
         break;
 
       case MOTION:
@@ -152,13 +150,13 @@ void debugStatePrint()
 // Enable LED Strobe
 void enableLED()
 {
-  LED_en = true;
+  //LED_en = true;
 }
 
 // Disable LED Strobe
 void disableLED()
 {
-  LED_en = false;
+  //  LED_en = false;
 }
 
 void rotateCW(unsigned long duration)
@@ -332,10 +330,39 @@ void controlSMtick()
         directionCounter = 0;
         sampleTimeMark = 0;
         locationCounter = 0;
-        controlState = MOTION;
+        controlState = CALIBRATION;
         incORdec = true;
+        calibrationCounter = 0;
+        countingDown = false;
       }
       break;
+
+     case CALIBRATION:
+     {
+        if(calibrationCounter == 0 && countingDown) {
+          controlState = MOTION;
+        }
+        else{
+          controlState = CALIBRATION;
+        }
+        
+        signed int angle = (ANGLESLICE_DEG * calibrationCounter);
+        goToDegree(angle);
+        SONAR1.setNormalRange(calibrationCounter);
+        
+        if(calibrationCounter == NUM_OF_BINS) {
+          countingDown = true;
+        }
+
+        //Next calibration counter position
+        if(countingDown) {
+          --calibrationCounter;
+        }
+        else{
+          ++calibrationCounter;
+        }
+        break;
+     }
 
     case MOTION:
       {
@@ -351,42 +378,36 @@ void controlSMtick()
       break;
 
     case SAMPLE:
-
       if (SONAR1.hitDetected(locationCounter)) {
         controlState = SOUNDALERT;
-        Serial.println("HIT!!!!");
-        Serial.println("HIT!!!!");
-        Serial.println("HIT!!!!");
-        Serial.println("HIT!!!!");
-        break;
       }
       else {
 
         controlState = MOTION;
-
-        if (incORdec)
+      }
+      if (incORdec)
+      {
+        if ((locationCounter == NUM_OF_BINS))
         {
-          if ((locationCounter == NUM_OF_BINS))
-          {
-            locationCounter--;
-            incORdec = false;
-          } else
-          {
-            locationCounter++;
-            incORdec = true;
-          }
+          
+          locationCounter--;
+          incORdec = false;
+        } else
+        {
+          locationCounter++;
+          incORdec = true;
         }
-        else
+      }
+      else
+      {
+        if ((locationCounter == 0))
         {
-          if ((locationCounter == 0))
-          {
-            locationCounter++;
-            incORdec = true;
-          } else
-          {
-            locationCounter--;
-            incORdec = false;
-          }
+          locationCounter++;
+          incORdec = true;
+        } else
+        {
+          locationCounter--;
+          incORdec = false;
         }
       }
       break;
@@ -401,7 +422,7 @@ void controlSMtick()
       {
         if ((millis() - killAllTimeMark) >= (KILLALLTIME_MS))
         {
-          controlState = INIT;
+          controlState = MOTION;
         }
 
       }
@@ -423,9 +444,4 @@ void controlSMtick()
 
   }
 }
-
-
-
-
-
 
