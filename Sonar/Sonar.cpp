@@ -11,7 +11,7 @@ Sonar::~Sonar(){
 
 bool Sonar::hitDetected(int position) {
     bool hitDetected = false;
-    unsigned long median = ping->ping_median();
+    unsigned long median = ping->ping_median(20);
 
     if(abs(ping->convert_in(memory[position]) - ping->convert_in(median)) > EPSILON) {
         hitDetected = true;
@@ -21,7 +21,7 @@ bool Sonar::hitDetected(int position) {
 }
 
 void Sonar::setNormalRange(int position) {
-    unsigned long median = ping->ping_median();
+    unsigned long median = ping->ping_median(20);
     memory[position] = median;
 }
 
