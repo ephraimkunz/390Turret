@@ -1,7 +1,7 @@
 #include "Arduino.h"
 #include "NewPing.h"
 #define NUM_POSITIONS 12 //30 degrees for each move
-#define EPSILON 5 //3 inches is the max wiggle room before detection
+#define EPSILON 10 //3 inches is the max wiggle room before detection
 
 class Sonar {
 public:
@@ -17,12 +17,12 @@ public:
     /* Returns bool indicating if a hit is detected at position, after doing a read and comparing previous
      * read for this position
      */
-    bool hitDetected(int position);
+    bool hitDetected(int position, int* oldDist, int* newDist);
 
     /* The first time through the rotation, we need to set a normal range to compare against later
      * to detect a hit
      */
-    void setNormalRange(int position);
+    void setNormalRange(int position, int* dist);
 
     /* Sets all positions to 0 distance.
      * Call this after creating a Sonar object, or when reset is pressed
