@@ -1,45 +1,37 @@
 #include <NewPing.h>
 #include <Sonar.h>
 
-#define LEDPIN 10
+//LED
+#define LEDPIN 11
 #define LED_FREQUENCY_HZ 4500
-#define LED_HALFPERIOD_US ((1E6 / (LED_FREQUENCY_HZ*2)))
+#define KILLALLTIME_MS 3000
 
+//Servo
 #define AZMPIN 3
 #define BASEPULSE_US 20000 // 50 Hz
 #define CLOCKWISE_US 1000
 #define CNTRCLOCKWISE_US 2000
-#define USPERDEGREE 3200
 #define SMALLCORRECTION (1.273)
-
 #define US_PER_DEGREE 3.3E3
+
 signed int currentAngle = 0;
 
 #define MAXANGLE 180 // Used in setting current position limits in naming locations
 #define MINANGLE 0
-
-#define NUM_OF_BINS (5)
-#define WAITTIME_MS (1)
-#define NUMSAMPLES (5)
+#define NUM_OF_BINS 5
 #define ANGLESLICE_DEG ((MAXANGLE-MINANGLE)/NUM_OF_BINS)
-#define KILLALLTIME_MS 3000
 
-
+//Sonar
 #define SONARPIN 6
 Sonar SONAR1(SONARPIN);
-#define NORMAL_RANGE 10000
 
-unsigned long long directionCounter = 0;
-unsigned calibrationCounter = 0;
+//Calibration
+unsigned calibrationBin = 0; //The current bin that calibration is setting
 bool countingDown = false;
 
-unsigned long long sampleTimeMark = 0;
-unsigned long long killAllTimeMark = 0;
-bool incORdec = true;
-
-unsigned int locationCounter = 0;
-
-bool LED_on = false;
+unsigned long long killAllTimeMark = 0; //Start time that killAll was initiated
+bool incFlag = true;
+unsigned int locationCounter = 0; //Current bin to check for hits in
 /*
    We need to get the switch player values
    One full set up circle
@@ -49,59 +41,21 @@ bool LED_on = false;
    Sound Alarm, Fire 5 seconds
    Check Again,
    Either Continue firing or start search again
-
-
 */
 enum controlState_t {INIT, CALIBRATION, MOTION, SAMPLE, SOUNDALERT, KILLALL, REST};
 controlState_t controlState = INIT;
 
-
-
-
 void setup() {
   pinMode(AZMPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
-  initTurret();
   Serial.begin(9600);
-  delay(1000);
+  delay(1000); //Time for Serial to init
   SONAR1.reset();
 }
 
-// Intializes all the variables
-void initTurret()
-{
-  //  CW_en = false;
-  //  CCW_en = false;
-  //  LED_en = false;
-
-  //  CWlastPwmEvent = 0;
-  //  CCWlastPwmEvent = 0;
-  //  LEDlastPwmEvent = 0;
-}
-
-
-
 void loop() {
-
-  //  goToDegree(0);
-  //  delay(1000);
-  //  goToDegree(15);
-  //  delay(1000);
-  //  goToDegree(30);
-  //  delay(1000);
-  //  goToDegree(45);
-  //  delay(1000);
-  //  goToDegree(60);
-  //  delay(1000);
-  //  goToDegree(75);
-  //  delay(1000);
-  //  goToDegree(90);
-  //  delay(1000);
-
   controlSMtick();
-
 }
-
 
 void debugStatePrint()
 {
@@ -147,16 +101,19 @@ void debugStatePrint()
   }
 }
 
-// Enable LED Strobe
-void enableLED()
+//////////////////////////
+/////// LED control /////
+////////////////////////
+
+void ledOn()
 {
-  //LED_en = true;
+  tone(LEDPIN, LED_FREQUENCY_HZ);
 }
 
 // Disable LED Strobe
-void disableLED()
+void ledOff()
 {
-  //  LED_en = false;
+  noTone(LEDPIN);
 }
 
 void rotateCW(unsigned long duration)
@@ -208,11 +165,9 @@ void rotateCCW(unsigned long duration)
   }
 }
 
-
-///////////////////////////////////////////
-// ANGLE CODE
-///////////////////////////////////////////
-
+////////////////////
+// ANGLE CODE /////
+///////////////////
 
 void goToDegree(signed int azm)
 {
@@ -258,8 +213,6 @@ void goToDegree(signed int azm)
     }
   }
 }
-
-
 
 // Rotates the given number of degrees
 void rotateDegCW(unsigned int azmDeg)
@@ -318,6 +271,9 @@ signed int getCurrentAngle()
 }
 
 
+///////////////////////////////
+////// State Machine /////////
+/////////////////////////////
 
 void controlSMtick()
 {
@@ -327,53 +283,71 @@ void controlSMtick()
   {
     case INIT:
       {
-        directionCounter = 0;
-        sampleTimeMark = 0;
         locationCounter = 0;
         controlState = CALIBRATION;
-        incORdec = true;
-        calibrationCounter = 0;
+        incFlag = true;
+        calibrationBin = 0;
         countingDown = false;
       }
       break;
 
-     case CALIBRATION:
-     {
-        if(calibrationCounter == 0 && countingDown) {
+    case CALIBRATION:
+      {
+        if (calibrationBin == 0 && countingDown) {
           controlState = MOTION;
         }
-        else{
+        else {
           controlState = CALIBRATION;
         }
-        
-        signed int angle = (ANGLESLICE_DEG * calibrationCounter);
+
+        signed int angle = (ANGLESLICE_DEG * calibrationBin);
         goToDegree(angle);
-        SONAR1.setNormalRange(calibrationCounter);
-        
-        if(calibrationCounter == NUM_OF_BINS) {
+        SONAR1.setNormalRange(calibrationBin);
+
+        //Calculate next calibration bin position
+        if (calibrationBin == NUM_OF_BINS) {
           countingDown = true;
         }
 
-        //Next calibration counter position
-        if(countingDown) {
-          --calibrationCounter;
+        if (countingDown) {
+          --calibrationBin;
         }
-        else{
-          ++calibrationCounter;
+        else {
+          ++calibrationBin;
         }
         break;
-     }
+      }
 
     case MOTION:
       {
         signed int angle = (ANGLESLICE_DEG * locationCounter);
         goToDegree(angle);
         controlState = SAMPLE;
-        sampleTimeMark = millis();
-        //Serial.println("Location");
-        //Serial.println(angle);
 
-        delay(WAITTIME_MS);
+        if (incFlag)
+        {
+          if ((locationCounter == NUM_OF_BINS))
+          {
+            locationCounter--;
+            incFlag = false;
+          }
+          else
+          {
+            locationCounter++;
+          }
+        }
+        else
+        {
+          if ((locationCounter == 0))
+          {
+            locationCounter++;
+            incFlag = true;
+          } 
+          else
+          {
+            locationCounter--;
+          }
+        }
       }
       break;
 
@@ -382,38 +356,11 @@ void controlSMtick()
         controlState = SOUNDALERT;
       }
       else {
-
         controlState = MOTION;
-      }
-      if (incORdec)
-      {
-        if ((locationCounter == NUM_OF_BINS))
-        {
-          
-          locationCounter--;
-          incORdec = false;
-        } else
-        {
-          locationCounter++;
-          incORdec = true;
-        }
-      }
-      else
-      {
-        if ((locationCounter == 0))
-        {
-          locationCounter++;
-          incORdec = true;
-        } else
-        {
-          locationCounter--;
-          incORdec = false;
-        }
       }
       break;
     case SOUNDALERT:
       {
-        enableLED();
         controlState = KILLALL;
         killAllTimeMark = millis();
       }
@@ -423,16 +370,17 @@ void controlSMtick()
         if ((millis() - killAllTimeMark) >= (KILLALLTIME_MS))
         {
           controlState = MOTION;
+          ledOff();
         }
-
+        else {
+          ledOn();
+          controlState = KILLALL;
+        }
       }
       break;
 
     case REST:
       {
-
-        //disableCW();
-        disableLED();
         controlState = MOTION;
       }
       break;
@@ -441,7 +389,5 @@ void controlSMtick()
         controlState = INIT;
       }
       break;
-
   }
 }
-
