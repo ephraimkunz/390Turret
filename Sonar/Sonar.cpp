@@ -9,19 +9,24 @@ Sonar::~Sonar(){
     delete ping;
 }
 
-bool Sonar::hitDetected(int position) {
+bool Sonar::hitDetected(int position, int* oldDist, int* newDist) {
     bool hitDetected = false;
     unsigned long median = ping->ping_median(20);
-
-    if(abs(ping->convert_in(memory[position]) - ping->convert_in(median)) > EPSILON) {
+	unsigned oldMedian = ping->convert_in(memory[position]);
+	unsigned newMedian = ping->convert_in(median);
+	*oldDist = oldMedian;
+	*newDist = newMedian;
+	//Don't use abs here, because we are dealing with unsigned types.
+    if((max(oldMedian, newMedian) - min(oldMedian, newMedian)) > EPSILON) {
         hitDetected = true;
     }
     memory[position] = median;
     return hitDetected;
 }
 
-void Sonar::setNormalRange(int position) {
+void Sonar::setNormalRange(int position, int* dist) {
     unsigned long median = ping->ping_median(20);
+	*dist =   ping->convert_in(median);
     memory[position] = median;
 }
 
