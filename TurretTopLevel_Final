@@ -1,3 +1,14 @@
+/*
+   How it works:
+   We need to get the switch player values
+   One full set up circle
+   Rotate
+   Sample
+   If there is a hit, (already at angle)
+   Sound Alarm, Fire x seconds
+   Back to rotation
+*/
+
 #include <NewPing.h>
 #include <Sonar.h>
 
@@ -16,9 +27,9 @@
 
 signed int currentAngle = 0;
 
-#define MAXANGLE 180 // Used in setting current position limits in naming locations
+#define MAXANGLE 90 // Used in setting current position limits in naming locations
 #define MINANGLE 0
-#define NUM_OF_BINS 5
+#define NUM_OF_BINS 4
 #define ANGLESLICE_DEG ((MAXANGLE-MINANGLE)/NUM_OF_BINS)
 
 //Sonar
@@ -32,16 +43,8 @@ bool countingDown = false;
 unsigned long long killAllTimeMark = 0; //Start time that killAll was initiated
 bool incFlag = true;
 unsigned int locationCounter = 0; //Current bin to check for hits in
-/*
-   We need to get the switch player values
-   One full set up circle
-   Rotate
-   Sample
-   If there is a hit, (already at angle)
-   Sound Alarm, Fire 5 seconds
-   Check Again,
-   Either Continue firing or start search again
-*/
+unsigned int nextLocationCounter = 0;
+
 enum controlState_t {INIT, CALIBRATION, MOTION, SAMPLE, SOUNDALERT, KILLALL, REST};
 controlState_t controlState = INIT;
 
@@ -284,6 +287,7 @@ void controlSMtick()
     case INIT:
       {
         locationCounter = 0;
+        nextLocationCounter = 0;
         controlState = CALIBRATION;
         incFlag = true;
         calibrationBin = 0;
@@ -293,16 +297,23 @@ void controlSMtick()
 
     case CALIBRATION:
       {
+        signed int angle = (ANGLESLICE_DEG * calibrationBin);
+        goToDegree(angle);
+        int dist;
+        SONAR1.setNormalRange(calibrationBin, &dist);
+        Serial.println("Calibration bin, dist, stored");
+        Serial.print(calibrationBin);
+        Serial.print(" ,  ");
+        Serial.print(dist);
+        Serial.print(" , ");
+        Serial.println(SONAR1.getDistanceAt(calibrationBin));
         if (calibrationBin == 0 && countingDown) {
           controlState = MOTION;
+          break;
         }
         else {
           controlState = CALIBRATION;
         }
-
-        signed int angle = (ANGLESLICE_DEG * calibrationBin);
-        goToDegree(angle);
-        SONAR1.setNormalRange(calibrationBin);
 
         //Calculate next calibration bin position
         if (calibrationBin == NUM_OF_BINS) {
@@ -320,44 +331,59 @@ void controlSMtick()
 
     case MOTION:
       {
-        signed int angle = (ANGLESLICE_DEG * locationCounter);
+        signed int angle = (ANGLESLICE_DEG * nextLocationCounter);
+        Serial.print("move ");
+        Serial.println(nextLocationCounter);
         goToDegree(angle);
         controlState = SAMPLE;
 
+        /* Why have nextLocationCounter, you ask? If we update
+         *  locationCounter below and then go to the detect state,
+         *  we will check the memory slot for the next location,
+         *  not the one we are currently in, thus detecting phantom hits.
+         */
+        locationCounter = nextLocationCounter;
+
         if (incFlag)
         {
-          if ((locationCounter == NUM_OF_BINS))
+          if ((nextLocationCounter == NUM_OF_BINS))
           {
-            locationCounter--;
+            nextLocationCounter--;
             incFlag = false;
           }
           else
           {
-            locationCounter++;
+            nextLocationCounter++;
           }
         }
         else
         {
-          if ((locationCounter == 0))
+          if ((nextLocationCounter == 0))
           {
-            locationCounter++;
-            incFlag = true;
-          } 
+            nextLocationCounter++;
+            incFlag  = true;
+          }
           else
           {
-            locationCounter--;
+            nextLocationCounter--;
           }
         }
       }
       break;
 
     case SAMPLE:
-      if (SONAR1.hitDetected(locationCounter)) {
+      int oldDist, newDist;
+      //Use locationCounter here for the current location, not the new one just calculated
+      if (SONAR1.hitDetected(locationCounter, &oldDist, &newDist)) {
         controlState = SOUNDALERT;
       }
       else {
         controlState = MOTION;
       }
+      Serial.println("old dist, new dist");
+      Serial.print(oldDist);
+      Serial.print(" , ");
+      Serial.println(newDist);
       break;
     case SOUNDALERT:
       {
