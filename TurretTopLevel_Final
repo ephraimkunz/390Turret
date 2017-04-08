@@ -1,3 +1,4 @@
+
 /*
    How it works:
    We need to get the switch player values
@@ -17,6 +18,28 @@
 #define LED_FREQUENCY_HZ 4500
 #define KILLALLTIME_MS 3000
 
+// Frequencies
+#define FREQ0 1471 // Hz
+#define FREQ1 1724 // Hz
+#define FREQ2 2000 // Hz
+#define FREQ3 2273 // Hz
+#define FREQ4 2632 // Hz
+#define FREQ5 2941 // Hz
+#define FREQ6 3333 // Hz
+#define FREQ7 3571 // Hz
+#define FREQ8 3846 // Hz
+#define FREQ9 4167 // Hz
+
+// Switches
+#define SW0 A0
+#define SW1 A1
+#define SW2 A2
+#define SW3 A3
+#define NUM_SWITCHES 4
+unsigned int switchList[NUM_SWITCHES] = {SW0,SW1,SW2,SW3};
+
+#define SW_THRESHOLD 100
+
 //Servo
 #define AZMPIN 3
 #define BASEPULSE_US 20000 // 50 Hz
@@ -31,6 +54,9 @@ signed int currentAngle = 0;
 #define MINANGLE 0
 #define NUM_OF_BINS 4
 #define ANGLESLICE_DEG ((MAXANGLE-MINANGLE)/NUM_OF_BINS)
+
+
+
 
 //Sonar
 #define SONARPIN 6
@@ -48,17 +74,20 @@ unsigned int nextLocationCounter = 0;
 enum controlState_t {INIT, CALIBRATION, MOTION, SAMPLE, SOUNDALERT, KILLALL, REST};
 controlState_t controlState = INIT;
 
+
 void setup() {
   pinMode(AZMPIN, OUTPUT);
   pinMode(LEDPIN, OUTPUT);
+  pinMode(SW0, INPUT);
+  pinMode(SW1, INPUT);
+  pinMode(SW2, INPUT);
+  pinMode(SW3, INPUT);
   Serial.begin(9600);
   delay(1000); //Time for Serial to init
   SONAR1.reset();
 }
 
-void loop() {
-  controlSMtick();
-}
+
 
 void debugStatePrint()
 {
@@ -103,6 +132,69 @@ void debugStatePrint()
     }
   }
 }
+///////////////////////////////
+////// SWICH SAMPLE /////////
+/////////////////////////////
+
+
+
+unsigned int getPlayerFrequency()
+{
+  String switchValue = "0000"; // Use a string to represent binary number
+
+  for (unsigned int i = 0; i<NUM_SWITCHES; i++)
+  {
+    if (analogRead(switchList[i]) > SW_THRESHOLD)
+    {
+      switchValue.setCharAt(i,'1');
+    }
+  }
+
+    if(switchValue == "0000")
+    {
+    return FREQ0;
+    }else
+    if(switchValue == "0001")
+    {
+    return FREQ1;
+    }else
+    if(switchValue == "0010")
+    {
+    return FREQ2;
+    }else
+    if(switchValue == "0011")
+    {
+    return FREQ3;
+    }else
+    if(switchValue == "0100")
+    {
+    return FREQ4;
+    }else
+    if(switchValue == "0101")
+    {
+    return FREQ5;
+    }else
+    if(switchValue == "0110")
+    {
+    return FREQ6;
+    }else
+    if(switchValue == "0111")
+    {
+    return FREQ7;
+    }else
+    if(switchValue == "1000")
+    {
+    return FREQ8;
+    }else
+    if(switchValue == "1001")
+    {
+    return FREQ9; 
+    }else
+    {
+      return FREQ0; //DEFAULT
+    } 
+}
+
 
 //////////////////////////
 /////// LED control /////
@@ -110,7 +202,7 @@ void debugStatePrint()
 
 void ledOn()
 {
-  tone(LEDPIN, LED_FREQUENCY_HZ);
+  tone(LEDPIN, getPlayerFrequency());
 }
 
 // Disable LED Strobe
@@ -118,6 +210,9 @@ void ledOff()
 {
   noTone(LEDPIN);
 }
+
+
+
 
 void rotateCW(unsigned long duration)
 {
@@ -274,6 +369,9 @@ signed int getCurrentAngle()
 }
 
 
+
+
+
 ///////////////////////////////
 ////// State Machine /////////
 /////////////////////////////
@@ -416,4 +514,9 @@ void controlSMtick()
       }
       break;
   }
+}
+
+
+void loop() {
+  controlSMtick();
 }
