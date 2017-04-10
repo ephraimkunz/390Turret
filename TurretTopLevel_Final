@@ -31,14 +31,14 @@
 #define FREQ9 4167 // Hz
 
 // Switches
-#define SW0 A0
-#define SW1 A1
-#define SW2 A2
-#define SW3 A3
+#define SW0 A1
+#define SW1 A2
+#define SW2 A3
+#define SW3 A4
 #define NUM_SWITCHES 4
 unsigned int switchList[NUM_SWITCHES] = {SW0,SW1,SW2,SW3};
 
-#define SW_THRESHOLD 100
+#define SW_THRESHOLD 10 // A logic '1' should have voltage = 0, but we give 10 for tolerance
 
 //Servo
 #define AZMPIN 3
@@ -144,12 +144,11 @@ unsigned int getPlayerFrequency()
 
   for (unsigned int i = 0; i<NUM_SWITCHES; i++)
   {
-    if (analogRead(switchList[i]) > SW_THRESHOLD)
+    if (analogRead(switchList[i]) < SW_THRESHOLD)
     {
       switchValue.setCharAt(i,'1');
     }
   }
-
     if(switchValue == "0000")
     {
     return FREQ0;
