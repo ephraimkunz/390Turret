@@ -31,14 +31,15 @@
 #define FREQ9 4167 // Hz
 
 // Switches
-#define SW0 A1
-#define SW1 A2
-#define SW2 A3
-#define SW3 A4
+#define SW0 A2
+#define SW1 A3
+#define SW2 A4
+#define SW3 A5
 #define NUM_SWITCHES 4
 unsigned int switchList[NUM_SWITCHES] = {SW0,SW1,SW2,SW3};
 
 #define SW_THRESHOLD 10 // A logic '1' should have voltage = 0, but we give 10 for tolerance
+unsigned int currentFrequency = 0; // The current player frequency
 
 //Servo
 #define AZMPIN 3
@@ -47,6 +48,7 @@ unsigned int switchList[NUM_SWITCHES] = {SW0,SW1,SW2,SW3};
 #define CNTRCLOCKWISE_US 2000
 #define SMALLCORRECTION (1.273)
 #define US_PER_DEGREE 3.3E3
+
 
 signed int currentAngle = 0;
 
@@ -74,6 +76,8 @@ unsigned int nextLocationCounter = 0;
 enum controlState_t {INIT, CALIBRATION, MOTION, SAMPLE, SOUNDALERT, KILLALL, REST};
 controlState_t controlState = INIT;
 
+#define MOTIONDELAY_MS 250
+#define AFTERCALIBRATIONDELAY_MS 1000
 
 void setup() {
   pinMode(AZMPIN, OUTPUT);
@@ -201,7 +205,7 @@ unsigned int getPlayerFrequency()
 
 void ledOn()
 {
-  tone(LEDPIN, getPlayerFrequency());
+   tone(LEDPIN, currentFrequency);
 }
 
 // Disable LED Strobe
@@ -377,7 +381,7 @@ signed int getCurrentAngle()
 
 void controlSMtick()
 {
-  debugStatePrint();
+debugStatePrint();
 
   switch (controlState)
   {
@@ -394,18 +398,23 @@ void controlSMtick()
 
     case CALIBRATION:
       {
+        delay(MOTIONDELAY_MS);
+        
         signed int angle = (ANGLESLICE_DEG * calibrationBin);
         goToDegree(angle);
         int dist;
         SONAR1.setNormalRange(calibrationBin, &dist);
+       
         Serial.println("Calibration bin, dist, stored");
         Serial.print(calibrationBin);
         Serial.print(" ,  ");
         Serial.print(dist);
         Serial.print(" , ");
         Serial.println(SONAR1.getDistanceAt(calibrationBin));
+       
         if (calibrationBin == 0 && countingDown) {
           controlState = MOTION;
+          delay(AFTERCALIBRATIONDELAY_MS);
           break;
         }
         else {
@@ -429,9 +438,12 @@ void controlSMtick()
     case MOTION:
       {
         signed int angle = (ANGLESLICE_DEG * nextLocationCounter);
+        /*
         Serial.print("move ");
         Serial.println(nextLocationCounter);
+        */
         goToDegree(angle);
+        delay(MOTIONDELAY_MS);
         controlState = SAMPLE;
 
         /* Why have nextLocationCounter, you ask? If we update
@@ -469,18 +481,24 @@ void controlSMtick()
       break;
 
     case SAMPLE:
+    
       int oldDist, newDist;
       //Use locationCounter here for the current location, not the new one just calculated
       if (SONAR1.hitDetected(locationCounter, &oldDist, &newDist)) {
         controlState = SOUNDALERT;
+        currentFrequency = getPlayerFrequency();
       }
       else {
         controlState = MOTION;
       }
+      
       Serial.println("old dist, new dist");
       Serial.print(oldDist);
       Serial.print(" , ");
       Serial.println(newDist);
+      Serial.println("Player Frequency");
+      Serial.println(currentFrequency);
+      
       break;
     case SOUNDALERT:
       {
@@ -516,6 +534,8 @@ void controlSMtick()
 }
 
 
+
 void loop() {
-  controlSMtick();
+
+controlSMtick();
 }
