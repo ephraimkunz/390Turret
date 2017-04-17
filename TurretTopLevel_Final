@@ -45,20 +45,20 @@ unsigned int currentFrequency = 0; // The current player frequency
 #define AZMPIN 3
 #define BASEPULSE_US 20000 // 50 Hz
 #define CLOCKWISE_US 1000
-#define CNTRCLOCKWISE_US 2000
-#define SMALLCORRECTION (1.273)
-#define US_PER_DEGREE 3.3E3
+#define CNTRCLOCKWISE_US 1895
+#define SMALLCORRECTION (1.00)
+#define US_PER_DEGREE 3.5E3
 
 
 signed int currentAngle = 0;
 
-#define MAXANGLE 90 // Used in setting current position limits in naming locations
+#define MAXANGLE 180 // Used in setting current position limits in naming locations
 #define MINANGLE 0
-#define NUM_OF_BINS 4
+#define NUM_OF_BINS 9
 #define ANGLESLICE_DEG ((MAXANGLE-MINANGLE)/NUM_OF_BINS)
 
-
-
+#define MOTIONDELAY_MS 150
+#define AFTERCALIBRATIONDELAY_MS 1000
 
 //Sonar
 #define SONARPIN 6
@@ -76,8 +76,7 @@ unsigned int nextLocationCounter = 0;
 enum controlState_t {INIT, CALIBRATION, MOTION, SAMPLE, SOUNDALERT, KILLALL, REST};
 controlState_t controlState = INIT;
 
-#define MOTIONDELAY_MS 250
-#define AFTERCALIBRATIONDELAY_MS 1000
+
 
 void setup() {
   pinMode(AZMPIN, OUTPUT);
